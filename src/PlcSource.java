@@ -93,7 +93,7 @@ public class PlcSource extends AbstractSource implements Configurable, PollableS
     @Override
     public Status process() throws EventDeliveryException {
         Status status = null;
-
+        
         try {
             Event e =new Event() {
 
