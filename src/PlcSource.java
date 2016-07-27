@@ -24,6 +24,8 @@ public class PlcSource extends AbstractSource implements Configurable, PollableS
     protected int slot;
     protected String address;
     protected int numItems;
+    protected int dbNum;
+    protected int posStart;
 
     private TCPConnection dc;
     private PLCinterface di;
@@ -35,8 +37,9 @@ public class PlcSource extends AbstractSource implements Configurable, PollableS
         this.plcAddr = context.getString("plcAddr", "localhost");
         this.rack = Integer.parseInt(context.getString("rack", "0"));
         this.slot = Integer.parseInt(context.getString("slot", "2"));
-        this.numItems = Integer.parseInt(context.getString("numItems", "2"));
-        this.address = context.getString("address", "");
+        this.numItems = Integer.parseInt(context.getString("numItems", "1"));
+        this.posStart = Integer.parseInt(context.getString("posStart", "0"));
+        this.dbNum = Integer.parseInt(context.getString("dbNum", "0"));
     }
 
     @Override
@@ -93,48 +96,53 @@ public class PlcSource extends AbstractSource implements Configurable, PollableS
     @Override
     public Status process() throws EventDeliveryException {
         Status status = null;
-        
-        try {
-            Event e =new Event() {
+        int statusReadOperation = this.dc.readBytes(Nodave.DB, this.dbNum, this.posStart, this.numItems, null);
+        if (statusReadOperation == Nodave.RESULT_OK) {
 
-                @Override
-                public Map<String, String> getHeaders() {
-                    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            try {
+                Event e = new Event() {
+
+                    @Override
+                    public Map<String, String> getHeaders() {
+                        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+                    }
+
+                    @Override
+                    public void setHeaders(Map<String, String> map) {
+                        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+                    }
+
+                    @Override
+                    public byte[] getBody() {
+                        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+                    }
+
+                    @Override
+                    public void setBody(byte[] bytes) {
+                        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+                    }
+                };
+
+                // This try clause includes whatever Channel/Event operations you want to do
+                // Receive new data
+                // Event e = getSomeData();
+                // Store the Event into this Source's associated Channel(s)
+                // getChannelProcessor().processEvent(e);
+                status = Status.READY;
+            } catch (Throwable t) {
+                // Log exception, handle individual exceptions as needed
+
+                status = Status.BACKOFF;
+
+                // re-throw all Errors
+                if (t instanceof Error) {
+                    throw (Error) t;
                 }
+            } finally {
 
-                @Override
-                public void setHeaders(Map<String, String> map) {
-                    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-                }
-
-                @Override
-                public byte[] getBody() {
-                    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-                }
-
-                @Override
-                public void setBody(byte[] bytes) {
-                    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-                }
-            };
-      // This try clause includes whatever Channel/Event operations you want to do
-
-            // Receive new data
-            // Event e = getSomeData();
-            // Store the Event into this Source's associated Channel(s)
-            // getChannelProcessor().processEvent(e);
-            status = Status.READY;
-        } catch (Throwable t) {
-            // Log exception, handle individual exceptions as needed
-
-            status = Status.BACKOFF;
-
-            // re-throw all Errors
-            if (t instanceof Error) {
-                throw (Error) t;
             }
-        } finally {
-
+        } else {
+            logger.error("Nodave error #" + statusReadOperation + " in process() - " + Nodave.strerror(statusReadOperation));
         }
         return status;
     }
